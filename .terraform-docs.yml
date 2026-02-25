@@ -1,0 +1,105 @@
+sort:
+  by: required
+
+content: |-
+  {{ .Header }}
+  # Imperva For Google Cloud Platform Terraform Module
+  
+  Provisions Imperva For Google Cloud Platform resources for a given Application Load Balancer.
+  - Terraform 0.13+
+  - Google Cloud Platform account and project ID.
+  - Service account with the necessary permissions
+  - Pre-existing Forwarding Rules and VPC/Subnet setup.
+  {{ .Requirements }}
+  {{ .Providers }}
+  {{ .Modules }}
+  {{ .Resources }}
+  {{ .Inputs }}
+  {{ .Outputs }}
+  {{ .Footer }}
+
+
+  ## Parameters - Explained
+
+  | Key                        | Type            | Description                                                                                                                                                                                                                 |
+  |----------------------------|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+  | load_balancer_name         | string          | Name of the Traffic Extension.                                                                                                                                                                                              |
+  | traffic_extension_description | string      | Optional description for the Traffic Extension.                                                                                                                                                                             |
+  | cel_expression             | string          | CEL expression to match requests. [CEL Reference](https://cloud.google.com/service-extensions/docs/cel-matcher-language-reference)                                                                                           |
+  | timeout                    | string          | Timeout duration (e.g., 1.0s).                                                                                                                                                                                              |
+  | fail_open                  | bool            | Whether to allow requests to continue if the extension call fails.                                                                                                                                                          |
+  | supported_events           | list(string)    | Events the extension should process. Valid values: `REQUEST_HEADERS`, `REQUEST_BODY`, `RESPONSE_HEADERS`, `RESPONSE_BODY`, `REQUEST_TRAILERS`, `RESPONSE_TRAILERS`.                                                         |
+  | labels                     | map(string)     | Key-value labels to apply to created resources.                                                                                                                                                                             |
+  | region                     | string          | Region of the Load Balancer and extension resources.                                                                                                                                                                        |
+  | network                    | string          | VPC network of the Load Balancer.                                                                                                                                                                                           |
+  | subnet                     | string          | Subnet used by the Load Balancer and extension resources.                                                                                                                                                                   |
+  | psc_target_service         | string          | Fully qualified name of the Private Service Connect attachment target (provided by Imperva).                                                                                                                                |
+  | load_balancing_scheme      | string          | Load balancing scheme: EXTERNAL_MANAGED, INTERNAL_MANAGED.                                                                                                                                                                  |
+  | authority_header           | string          | The authority header used for the extension. Provided by Imperva.                                                                                                                                                           |
+  | forwarding_rules           | list(string)    | Names of the forwarding rules to attach this extension to.                                                                                                                                                                  |
+  | prefix                    | string          | Default prefix for all resources.                                                                                                                                                                                            |
+  For global resources `region`, `network`, `subnet` and `psc_target_service` are provided via `imperva_backends` map, so multiple regions can be attached to the global resource.
+
+  ## Traffic Extension Metadata (`extention_metadata`)
+
+  The `extention_metadata` field allows you to pass custom key-value pairs as metadata to the traffic extension. This metadata is merged with system-defined values (`lb-id` and `project-id`) and sent via HTTP2 to the Imperva extension processor.
+    **Example usage:**
+
+    ```hcl
+    regional_resources = [
+      {
+        load_balancer_name    = "unique-load-balancer-name"
+        region                = "us-west2"
+        network               = "vpc-network"
+        subnet                = "subnet"
+        authority_header      = "imperva-authority-header.cplcloud.com"
+        forwarding_rules      = ["your-regional-forwarding-rule"]
+        extention_metadata    = {
+          custom_key1 = "custom_value1"
+          custom_key2 = "custom_value2"
+        }
+      }
+    ]
+    ```
+
+    If not specified, `extention_metadata` defaults to an empty map.
+
+  ## Usage - Example
+
+  ```hcl
+  module "imperva_for_google_cloud_platform" {
+    source = "./imperva-for-google-cloud-platform"
+
+    project_id = "your-gcp-project-id"
+
+    regional_resources = [
+      {
+        load_balancer_name    = "unique-load-balancer-name"
+        region                = "us-west2"
+        network               = "vpc-network"
+        subnet                = "subnet"
+        authority_header      = "imperva-authority-header.cplcloud.com"
+        forwarding_rules      = ["your-regional-forwarding-rule"]
+      }
+    ]
+
+    global_resources = [
+      {
+        load_balancer_name     = "unique-global-load-balancer-name"
+        authority_header       = "imperva-authority-header.cplcloud.com"
+        forwarding_rules       = ["your-global-forwarding-rule1"]
+        imperva_backends       = [
+          {
+            region             = "us-west2"
+            network            = "vpc-network"
+            subnet             = "subnet-uwe2"
+          },
+          {
+            region             = "us-east1"
+            network            = "vpc-network"
+            subnet             = "subnet-uea1"
+          }
+        ]
+      }
+    ]
+  ```
